@@ -3,6 +3,20 @@ Touter
 
 Touter should create a little Golang UDP client which finds git repos (given a base directory) and reports branch names, shas and stuff.
 
+Usage
+--
+
+```bash
+$ bin/touter
+Usage of ./bin/touter:
+  -f="/etc/touter.ini": Config file for touter (Shorthand)
+  -file="/etc/touter.ini": Config file for touter
+  -p=2002: Port to connect on (Shorthand)
+  -port=2002: Port to connect on
+  -s="localhost": Server to send to (Shorthand)
+  -server="localhost": Server to send to
+```
+
 Rationale
 --
 
