@@ -6,13 +6,13 @@ import (
     "fmt"
     "strings"
     "bytes"
-    // "net"
+     "net"
     "os"
     "os/exec"
     "path/filepath"
-    // "time"
     "flag"
     "log"
+    "encoding/json"
 )
 
 import "code.google.com/p/gcfg"
@@ -38,6 +38,7 @@ type Project struct {
     Branch string
 }
 var projects []Project
+var message map[string][]Project
 
 func init(){
     flag.StringVar(&server, "server", "localhost", "Server to send to")
@@ -76,7 +77,7 @@ func load_profile() []string{
     if err != nil {
         log.Fatalf("Failed to parse gcfg data: %s", err)
     }
-    log.Printf("Profile: %s:%s", profile, p.Profile[profile].Description)
+    log.Printf("Profile: %s: %s", profile, p.Profile[profile].Description)
     log.Printf("Excluding: %s\n", p.Profile[profile].Exclude)
 
     return p.Profile[profile].Exclude
@@ -139,12 +140,38 @@ func walker(fp string, fi os.FileInfo, err error) error{
     return nil
 }
 
+func send_message(msg string) bool {
+    destination := fmt.Sprintf("%s:%d", server, port)
+    conn, err := net.Dial("udp", destination)
+    if err != nil {
+        log.Fatalf("Could not send to %s: %s", destination, err)
+    }
+    fmt.Fprintf(conn, msg)
+    return true
+}
+
 func main(){
     flag.Parse()
+    hostname, err := os.Hostname()
+    log.Printf( "Hostname: %s\n", hostname )
+
     log.Println( show_init_settings() )
     excludes = load_profile()
 
-    // Loop through repos
     filepath.Walk( repo_root, walker)
     log.Println( "Projects: ", projects )
+
+    message = make(map[string][]Project)
+    message[hostname] = projects
+
+    j, err := json.Marshal(message)
+    if err != nil {
+        log.Fatalf("Could not marshal projects data: %s\n", err)
+    }
+
+    if send_message(string(j)) {
+        log.Println("Succesfully spaffed our repos")
+    } else {
+        log.Fatal("Something fucked up")
+    }
 }
