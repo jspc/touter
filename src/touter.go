@@ -74,7 +74,8 @@ func load_profiles() []string{
 func main(){
     flag.Parse()
     fmt.Println( show_init_settings() )
-    load_profiles()
+    excludes := load_profiles()
+    fmt.Println( excludes )
 
     // Loop through repos
 }
