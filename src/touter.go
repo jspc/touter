@@ -4,8 +4,12 @@ package main
 
 import (
     "fmt"
+    "strings"
+    "bytes"
     // "net"
     "os"
+    "os/exec"
+    "path/filepath"
     // "time"
     "flag"
     "log"
@@ -19,6 +23,7 @@ var config string
 var repo_root string
 var depth int
 var profile string
+var excludes []string
 
 type profiles struct {
     Profile map[string]*struct {
@@ -26,6 +31,13 @@ type profiles struct {
         Description string
     }
 }
+
+type Project struct {
+    Path string
+    Sha string
+    Branch string
+}
+var projects []Project
 
 func init(){
     flag.StringVar(&server, "server", "localhost", "Server to send to")
@@ -58,24 +70,81 @@ func show_init_settings() string{
         profile)
 }
 
-func load_profiles() []string{
+func load_profile() []string{
     var p profiles
     err := gcfg.ReadFileInto(&p, config)
     if err != nil {
         log.Fatalf("Failed to parse gcfg data: %s", err)
     }
-    fmt.Printf("\n%s :\n\t%s\nExcluding: %s\n",
-        profile,
-        p.Profile[profile].Description,
-        p.Profile[profile].Exclude)
+    log.Printf("Profile: %s:%s", profile, p.Profile[profile].Description)
+    log.Printf("Excluding: %s\n", p.Profile[profile].Exclude)
+
     return p.Profile[profile].Exclude
+}
+
+func git_info(fp string) (string, string){
+    // Create new objects over and over or we end up appending
+    var sha bytes.Buffer
+    var branch bytes.Buffer
+
+    branch_command := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
+    branch_command.Dir = fp
+    branch_command.Stdout = &branch
+    branch_err := branch_command.Run()
+
+    sha_command := exec.Command("git", "rev-parse", "HEAD")
+    sha_command.Dir = fp
+    sha_command.Stdout = &sha
+    sha_err := sha_command.Run()
+
+    if sha_err != nil || branch_err != nil {
+        log.Fatalf("Error(s) in %s:\n\t%s %s", fp, sha_err, branch_err)
+    }
+
+    return strings.Trim(sha.String(), "\n"), strings.Trim(branch.String(), "\n")
+}
+
+func ignored(dir_parts []string) bool{
+    for _, exclude := range excludes {
+        for _, dir := range dir_parts {
+            if dir == exclude {
+                return true
+            }
+        }
+    }
+    return false
+}
+
+func walker(fp string, fi os.FileInfo, err error) error{
+    if err != nil {
+        return nil
+    }
+    relative_path := strings.Replace(fp, repo_root, "", 1)
+    split_path    := strings.Split(relative_path, "/")
+    filename      := split_path[len(split_path)-1]
+
+    if !fi.IsDir() ||
+       strings.Count(relative_path, "/") > depth ||
+       filename != ".git" ||
+       ignored(split_path) {
+        return nil
+    }
+    project_name := strings.Replace(fp, "/.git", "", 1)
+
+    var p Project
+    p.Path = project_name
+    p.Sha, p.Branch = git_info(project_name)
+    projects = append(projects, p)
+
+    return nil
 }
 
 func main(){
     flag.Parse()
-    fmt.Println( show_init_settings() )
-    excludes := load_profiles()
-    fmt.Println( excludes )
+    log.Println( show_init_settings() )
+    excludes = load_profile()
 
     // Loop through repos
+    filepath.Walk( repo_root, walker)
+    log.Println( "Projects: ", projects )
 }
