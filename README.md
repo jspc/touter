@@ -1,3 +1,5 @@
+![Go Gopher](http://upload.wikimedia.org/wikipedia/commons/2/23/Golang.png?uselang=en-gb)
+
 Touter
 ==
 
