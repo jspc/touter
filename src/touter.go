@@ -211,7 +211,7 @@ func main(){
     }()
 
     for {
-        worker()
+        go worker()
         time.Sleep( time.Duration(wait) * time.Minute )
     }
 }
