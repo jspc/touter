@@ -9,6 +9,8 @@ import (
     "net"
     "os"
     "os/exec"
+    "os/signal"
+    "syscall"
     "path/filepath"
     "flag"
     "log"
@@ -187,6 +189,26 @@ func main(){
 
     log.Println( show_init_settings() )
     excludes = load_profile()
+
+    reload := make(chan os.Signal, 1)
+    send   := make(chan os.Signal, 1)
+
+    signal.Notify(reload, syscall.SIGHUP)
+    signal.Notify(send, syscall.SIGUSR1)
+
+    go func(){
+        for sig := range reload {
+            log.Printf("Received %s - reloading profile\n", sig)
+            excludes = load_profile()
+        }
+    }()
+
+    go func(){
+        for sig := range send {
+            log.Println("Received %s - sending repo data", sig)
+            worker()
+        }
+    }()
 
     for {
         worker()
