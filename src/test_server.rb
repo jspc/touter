@@ -11,5 +11,13 @@ s.bind(nil, 2002)
 j, sender = s.recvfrom(10240)
 data = JSON.parse j
 
-puts "Received data about #{data.keys.first}"
-puts "Sample repo: #{data[data.keys.first].sample['Path'] }"
+hostnames = data.keys
+puts "Received data about #{hostnames}"
+
+hostnames.each do |host|
+  puts "#{host} gives us #{data[host].length} items"
+  (0..4).each do |index|
+    repo = data[host][index]
+    puts "#{repo['Path']} is on branch #{repo['Branch']} (shasum: #{repo['Sha']}"
+  end
+end
