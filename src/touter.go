@@ -6,13 +6,14 @@ import (
     "fmt"
     "strings"
     "bytes"
-     "net"
+    "net"
     "os"
     "os/exec"
     "path/filepath"
     "flag"
     "log"
     "encoding/json"
+    "time"
 )
 
 import "code.google.com/p/gcfg"
@@ -22,8 +23,11 @@ var port int
 var config string
 var repo_root string
 var depth int
+var wait int
 var profile string
 var excludes []string
+var hostname string
+var err error
 
 type Profiles struct {
     Profile map[string]*struct {
@@ -38,7 +42,6 @@ type Project struct {
     Branch string
 }
 var projects []Project
-var message map[string][]Project
 
 func init(){
     flag.StringVar(&server, "server", "localhost", "Server to send to")
@@ -58,6 +61,9 @@ func init(){
 
     flag.StringVar(&profile, "profile", "rails", "Profile from config file to use")
     flag.StringVar(&profile, "pr", "rails", "Profile from config file to use (Shorthand)")
+
+    flag.IntVar(&wait, "wait", 1, "Minutes to wait between updates")
+    flag.IntVar(&wait, "w", 1, "Minutes to wait between updates (Shorthand)")
 }
 
 func show_init_settings() string{
@@ -150,18 +156,12 @@ func send_message(msg string) bool {
     return true
 }
 
-func main(){
-    flag.Parse()
-    hostname, err := os.Hostname()
-    log.Printf( "Hostname: %s\n", hostname )
-
-    log.Println( show_init_settings() )
-    excludes = load_profile()
-
+func worker(){
+    projects = nil
     filepath.Walk( repo_root, walker)
     log.Println( "Projects: ", projects )
 
-    message = make(map[string][]Project)
+    message := make(map[string][]Project)
     message[hostname] = projects
 
     j, err := json.Marshal(message)
@@ -173,5 +173,23 @@ func main(){
         log.Println("Succesfully spaffed our repos")
     } else {
         log.Fatal("Something fucked up")
+    }
+}
+
+func main(){
+    flag.Parse()
+    hostname, err = os.Hostname()
+    if err != nil {
+        log.Fatalf("Could not get hostname: %s", err)
+    }
+
+    log.Printf( "Hostname: %s\n", hostname )
+
+    log.Println( show_init_settings() )
+    excludes = load_profile()
+
+    for {
+        worker()
+        time.Sleep( time.Duration(wait) * time.Minute )
     }
 }
