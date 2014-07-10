@@ -12,4 +12,4 @@ j, sender = s.recvfrom(10240)
 data = JSON.parse j
 
 puts "Received data about #{data.keys.first}"
-puts "Sample repo: #{data[data.keys.first].first['Path'] }"
+puts "Sample repo: #{data[data.keys.first].sample['Path'] }"
