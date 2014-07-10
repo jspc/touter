@@ -25,7 +25,7 @@ var depth int
 var profile string
 var excludes []string
 
-type profiles struct {
+type Profiles struct {
     Profile map[string]*struct {
         Exclude []string
         Description string
@@ -72,7 +72,7 @@ func show_init_settings() string{
 }
 
 func load_profile() []string{
-    var p profiles
+    var p Profiles
     err := gcfg.ReadFileInto(&p, config)
     if err != nil {
         log.Fatalf("Failed to parse gcfg data: %s", err)
